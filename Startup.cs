@@ -1,3 +1,4 @@
+using EasyCaching.Core.Configurations;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
@@ -31,6 +32,44 @@ namespace HybridCachingWithEasyCaching
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "HybridCachingWithEasyCaching", Version = "v1" });
+            });
+
+            services.AddEasyCaching(option =>
+            {
+                // local
+                option.UseInMemory("m1");
+                // distributed
+                option.UseRedis(config =>
+                {
+                    config.DBConfig.Endpoints.Add(new ServerEndPoint("127.0.0.1", 6379));
+                    config.SerializerName = "json-serialiser";
+                    config.DBConfig.Database = 0;
+                }, "redis-cache");
+
+                // combine local and distributed
+                option.UseHybrid(config =>
+                {
+                    config.TopicName = "test-topic";
+                    config.EnableLogging = true;
+
+                    // specify the local cache provider name after v0.5.4
+                    config.LocalCacheProviderName = "m1";
+                    // specify the distributed cache provider name after v0.5.4
+                    config.DistributedCacheProviderName = "redis-cache";
+                })
+                // use redis bus
+                .WithRedisBus(busConf =>
+                {
+                    busConf.Endpoints.Add(new ServerEndPoint("127.0.0.1", 6379));
+                });
+
+                // add json serializer
+                Action<Newtonsoft.Json.JsonSerializerSettings> jsonNET = x =>
+                {
+                    x.NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore;
+                    x.ContractResolver = new Newtonsoft.Json.Serialization.CamelCasePropertyNamesContractResolver();
+                };
+                option.WithJson(jsonNET, "json-serialiser");
             });
         }
 
