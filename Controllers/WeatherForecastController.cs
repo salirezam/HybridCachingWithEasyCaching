@@ -1,4 +1,5 @@
 ﻿using EasyCaching.Core;
+using EasyCaching.Redis;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
@@ -20,13 +21,13 @@ namespace HybridCachingWithEasyCaching.Controllers
 
         private readonly ILogger<WeatherForecastController> _logger;
         private readonly IHybridCachingProvider provider;
-        private readonly IRedisCachingProvider redisCachingProvider;
+        private readonly IRedisDatabaseProvider redisDatabaseProvider;
 
-        public WeatherForecastController(ILogger<WeatherForecastController> logger, IHybridCachingProvider provider, IRedisCachingProvider redisCachingProvider)
+        public WeatherForecastController(ILogger<WeatherForecastController> logger, IHybridCachingProvider provider, IRedisDatabaseProvider redisDatabaseProvider)
         {
             _logger = logger;
             this.provider = provider;
-            this.redisCachingProvider = redisCachingProvider;
+            this.redisDatabaseProvider = redisDatabaseProvider;
         }
 
         [HttpGet]
@@ -52,8 +53,8 @@ namespace HybridCachingWithEasyCaching.Controllers
             .ToArray();
             try
             {
-                await redisCachingProvider.KeyExistsAsync("weather-list"); // To check Redis connectivity
-                await provider.SetAsync("weather-list", result, TimeSpan.FromSeconds(10));
+                if (redisDatabaseProvider.GetDatabase().IsConnected(default(RedisKey))) // To check Redis connectivity
+                    await provider.SetAsync("weather-list", result, TimeSpan.FromSeconds(10));
             }catch(RedisConnectionException ex)
             {
                 _logger.LogError($"Redis is down. Error: {ex.Message}");
