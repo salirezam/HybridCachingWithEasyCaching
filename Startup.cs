@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -36,12 +37,15 @@ namespace HybridCachingWithEasyCaching
 
             services.AddEasyCaching(option =>
             {
+                var server = Configuration.GetValue("Redis:Server","127.0.0.1");
+                var port = Configuration.GetValue("Redis:Port", 6379);
+                var busPort = Configuration.GetValue("Redis:BusPort", 6380);
                 // local
                 option.UseInMemory("m1");
                 // distributed
                 option.UseRedis(config =>
                 {
-                    config.DBConfig.Endpoints.Add(new ServerEndPoint("127.0.0.1", 6379));
+                    config.DBConfig.Endpoints.Add(new ServerEndPoint(server, port));
                     config.SerializerName = "json-serialiser";
                     config.DBConfig.Database = 0;
                 }, "redis-cache");
@@ -60,7 +64,7 @@ namespace HybridCachingWithEasyCaching
                 // use redis bus
                 .WithRedisBus(busConf =>
                 {
-                    busConf.Endpoints.Add(new ServerEndPoint("127.0.0.1", 6379));
+                    busConf.Endpoints.Add(new ServerEndPoint(server, busPort));
                 });
 
                 // add json serializer
